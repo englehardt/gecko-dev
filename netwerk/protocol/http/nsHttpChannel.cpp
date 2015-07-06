@@ -5367,6 +5367,7 @@ nsHttpChannel::AsyncOpen(nsIStreamListener *listener, nsISupports *context)
         mUserSetCookieHeader = cookieHeader;
     }
 
+    // TODO(ekr@rtfm.com): Why are cookies set here?
     AddCookiesToRequest();
 
     // After we notify any observers (on-opening-request, loadGroup, etc) we
@@ -5558,9 +5559,9 @@ nsHttpChannel::BeginConnect()
     RefPtr<nsChannelClassifier> channelClassifier = new nsChannelClassifier();
     if (mLoadFlags & LOAD_CLASSIFY_URI) {
         nsCOMPtr<nsIURIClassifier> classifier = do_GetService(NS_URICLASSIFIERSERVICE_CONTRACTID);
-        bool tpEnabled = false;
-        channelClassifier->ShouldEnableTrackingProtection(this, &tpEnabled);
-        if (classifier && tpEnabled) {
+        nsChannelClassifier::TrackingProtectionMode tpmode;
+        channelClassifier->ShouldEnableTrackingProtection(this, &tpmode);
+        if (classifier && tpmode != nsChannelClassifier::Allow) {
             // We skip speculative connections by setting mLocalBlocklist only
             // when tracking protection is enabled. Though we could do this for
             // both phishing and malware, it is not necessary for correctness,
@@ -6105,6 +6106,7 @@ nsHttpChannel::OnStartRequest(nsIRequest *request, nsISupports *ctxt)
 
     // avoid crashing if mListener happens to be null...
     if (!mListener) {
+        LOG(("EKR : mListener is null this=%p\n", this));
         NS_NOTREACHED("mListener is null");
         return NS_OK;
     }
@@ -7686,6 +7688,55 @@ nsHttpChannel::SetDoNotTrack()
                            NS_LITERAL_CSTRING("1"),
                            false);
   }
+
+NS_IMETHODIMP nsHttpChannel::StartRedirectChannelInSandbox()
+{
+    nsresult rv;
+
+    LOG(("nsHttpChannel::%s [this=%p]\n", __FUNCTION__, this));
+
+    nsCOMPtr<nsIIOService> ioService;
+    rv = gHttpHandler->GetIOService(getter_AddRefs(ioService));
+    if (NS_FAILED(rv)) return rv;
+
+    nsCOMPtr<nsIChannel> newChannel;
+    rv = NS_NewChannelInternal(getter_AddRefs(newChannel),
+                               mURI,
+                               mLoadInfo,
+                               nullptr, // aLoadGroup
+                               nullptr, // aCallbacks
+                               nsIRequest::LOAD_NORMAL,
+                               ioService);
+
+    // Inform consumers about this fake redirect
+    mRedirectChannel = newChannel;
+
+    LOG(("nsHttpChannel::%s [this=%p] newChannel = %p\n", __FUNCTION__, this,
+         newChannel.get()));
+
+    rv = SetupReplacementChannel(mURI, newChannel, true);
+    if (NS_FAILED(rv)) return rv;
+
+    // Add LOAD_ANONYMOUS
+    nsLoadFlags lf;
+    rv = newChannel->GetLoadFlags(&lf);
+    NS_ENSURE_SUCCESS(rv, rv);
+
+    rv = newChannel->SetLoadFlags(lf | nsIRequest::LOAD_ANONYMOUS);
+    NS_ENSURE_SUCCESS(rv, rv);
+    PushRedirectAsyncFunc(&nsHttpChannel::ContinueProcessRedirection);
+    rv = gHttpHandler->AsyncOnChannelRedirect(this, newChannel,
+                                              nsIChannelEventSink::REDIRECT_TEMPORARY);
+
+    if (NS_SUCCEEDED(rv))
+        rv = WaitForRedirectCallback();
+
+    if (NS_FAILED(rv)) {
+        AutoRedirectVetoNotifier notifier(this);
+        PopRedirectAsyncFunc(&nsHttpChannel::ContinueProcessRedirection);
+    }
+
+    return rv;
 }
 
 } // namespace net

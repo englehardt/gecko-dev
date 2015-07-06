@@ -133,6 +133,7 @@ public:
     NS_IMETHOD Cancel(nsresult status) override;
     NS_IMETHOD Suspend() override;
     NS_IMETHOD Resume() override;
+
     // nsIChannel
     NS_IMETHOD GetSecurityInfo(nsISupports **aSecurityInfo) override;
     NS_IMETHOD AsyncOpen(nsIStreamListener *listener, nsISupports *aContext) override;
@@ -154,6 +155,7 @@ public:
 
     NS_IMETHOD SetNotificationCallbacks(nsIInterfaceRequestor *aCallbacks) override;
     NS_IMETHOD SetLoadGroup(nsILoadGroup *aLoadGroup) override;
+
     // nsITimedChannel
     NS_IMETHOD GetDomainLookupStart(mozilla::TimeStamp *aDomainLookupStart) override;
     NS_IMETHOD GetDomainLookupEnd(mozilla::TimeStamp *aDomainLookupEnd) override;
@@ -204,6 +206,7 @@ public: /* internal necko use only */
     nsresult ContinueConnect();
 
     nsresult StartRedirectChannelToURI(nsIURI *, uint32_t);
+    NS_IMETHOD StartRedirectChannelInSandbox() override;
 
     // This allows cache entry to be marked as foreign even after channel itself
     // is gone.  Needed for e10s (see HttpChannelParent::RecvDocumentChannelCleanup)
@@ -357,7 +360,7 @@ private:
     nsresult DoAuthRetry(nsAHttpConnection *);
 
     void     HandleAsyncRedirectChannelToHttps();
-    nsresult StartRedirectChannelToHttps();
+    NS_IMETHOD StartRedirectChannelToHttps();
     nsresult ContinueAsyncRedirectChannelToURI(nsresult rv);
     nsresult OpenRedirectChannel(nsresult rv);
 
