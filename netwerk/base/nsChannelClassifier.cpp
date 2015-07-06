@@ -58,17 +58,24 @@ nsChannelClassifier::nsChannelClassifier()
 
 nsresult
 nsChannelClassifier::ShouldEnableTrackingProtection(nsIChannel *aChannel,
-                                                    bool *result)
+                                                    TrackingProtectionMode *result)
 {
     // Should only be called in the parent process.
     MOZ_ASSERT(XRE_IsParentProcess());
 
     NS_ENSURE_ARG(result);
-    *result = false;
 
+    TrackingProtectionMode mode;
     nsCOMPtr<nsILoadContext> loadContext;
     NS_QueryNotificationCallbacks(aChannel, loadContext);
-    if (!loadContext || !(loadContext->UseTrackingProtection())) {
+    if (loadContext && loadContext->UseTrackingProtection()) {
+      if (Preferences::GetBool("privacy.adbox.enabled", false)) {
+        mode = Sandbox;
+      } else {
+        mode = Block;
+      }
+    } else {
+      *result = Allow;
       return NS_OK;
     }
 
@@ -105,7 +112,7 @@ nsChannelClassifier::ShouldEnableTrackingProtection(nsIChannel *aChannel,
     thirdPartyUtil->IsThirdPartyURI(chanURI, topWinURI, &isThirdPartyWindow);
     thirdPartyUtil->IsThirdPartyChannel(aChannel, nullptr, &isThirdPartyChannel);
     if (!isThirdPartyWindow || !isThirdPartyChannel) {
-      *result = false;
+      *result = Allow;
       if (LOG_ENABLED()) {
         nsAutoCString spec;
         chanURI->GetSpec(spec);
@@ -115,6 +122,7 @@ nsChannelClassifier::ShouldEnableTrackingProtection(nsIChannel *aChannel,
       }
       return NS_OK;
     }
+
 
     nsCOMPtr<nsIIOService> ios = do_GetService(NS_IOSERVICE_CONTRACTID, &rv);
     NS_ENSURE_SUCCESS(rv, rv);
@@ -157,9 +165,9 @@ nsChannelClassifier::ShouldEnableTrackingProtection(nsIChannel *aChannel,
       LOG(("nsChannelClassifier[%p]: Allowlisting channel[%p] for %s", this,
            aChannel, escaped.get()));
       mIsAllowListed = true;
-      *result = false;
+      *result = Allow;
     } else {
-      *result = true;
+      *result = mode;
     }
 
     // In Private Browsing Mode we also check against an in-memory list.
@@ -178,13 +186,13 @@ nsChannelClassifier::ShouldEnableTrackingProtection(nsIChannel *aChannel,
              this, aChannel, escaped.get()));
       }
 
-      *result = !exists;
+      *result = exists ? Allow : mode;
     }
 
     // Tracking protection will be enabled so return without updating
     // the security state. If any channels are subsequently cancelled
     // (page elements blocked) the state will be then updated.
-    if (*result) {
+    if (mode != Allow) {
       if (LOG_ENABLED()) {
         nsAutoCString topspec, spec;
         topWinURI->GetSpec(topspec);
@@ -344,8 +352,8 @@ nsChannelClassifier::StartInternal()
     NS_ENSURE_SUCCESS(rv, rv);
 
     bool expectCallback;
-    bool trackingProtectionEnabled = false;
-    (void)ShouldEnableTrackingProtection(mChannel, &trackingProtectionEnabled);
+    TrackingProtectionMode tpmode;
+    (void)ShouldEnableTrackingProtection(mChannel, &tpmode);
 
     if (LOG_ENABLED()) {
       nsAutoCString uriSpec, principalSpec;
@@ -356,7 +364,7 @@ nsChannelClassifier::StartInternal()
       LOG(("nsChannelClassifier[%p]: Classifying principal %s on channel with "
            "uri %s", this, principalSpec.get(), uriSpec.get()));
     }
-    rv = uriClassifier->Classify(principal, trackingProtectionEnabled, this,
+    rv = uriClassifier->Classify(principal, tpmode != Allow, this,
                                  &expectCallback);
     if (NS_FAILED(rv)) {
         return rv;
@@ -664,13 +672,14 @@ nsChannelClassifier::OnClassifyComplete(nsresult aErrorCode)
     }
 
     if (mSuspendedChannel) {
+      MarkEntryClassified(aErrorCode);
+
       nsAutoCString errorName;
       if (LOG_ENABLED()) {
         GetErrorName(aErrorCode, errorName);
         LOG(("nsChannelClassifier[%p]:OnClassifyComplete %s (suspended channel)",
              this, errorName.get()));
       }
-      MarkEntryClassified(aErrorCode);
 
       if (NS_FAILED(aErrorCode)) {
         if (LOG_ENABLED()) {
@@ -683,14 +692,32 @@ nsChannelClassifier::OnClassifyComplete(nsresult aErrorCode)
                spec.get(), errorName.get()));
         }
 
-        // Channel will be cancelled (page element blocked) due to tracking.
-        // Do update the security state of the document and fire a security
-        // change event.
         if (aErrorCode == NS_ERROR_TRACKING_URI) {
-          SetBlockedTrackingContent(mChannel);
-        }
+          LOG(("nsChannelClassifier[%p]:OnClassifyComplete tracking domain", this));
+          TrackingProtectionMode tpmode;
+          (void)ShouldEnableTrackingProtection(mChannel, &tpmode);
 
-        mChannel->Cancel(aErrorCode);
+          if (tpmode != Sandbox) {
+            // Channel will be cancelled (page element blocked) due to tracking.
+            // Do update the security state of the document and fire a security
+            // change event.
+            SetBlockedTrackingContent(mChannel);
+            mChannel->Cancel(aErrorCode);
+          } else {
+            // TODO(ekr@rtfm.com): Handle errors rather than leak.
+            nsLoadFlags loadFlags;
+            nsresult rv = mChannel->GetLoadFlags(&loadFlags);
+            NS_ENSURE_SUCCESS(rv, rv);
+
+            LOG(("nsChannelClassifier[%p]:OnClassifyComplete redirecting  %p as sandboxed ",
+                 this, mChannel.get()));
+
+            // Redirect the httpChannel
+            nsCOMPtr<nsIHttpChannelInternal> hchannel = do_QueryInterface(mChannel, &rv);
+            NS_ENSURE_SUCCESS(rv, rv);
+            rv = hchannel->StartRedirectChannelInSandbox();
+          }
+        }
       }
       LOG(("nsChannelClassifier[%p]: resuming channel %p from "
            "OnClassifyComplete", this, mChannel.get()));
@@ -698,7 +725,6 @@ nsChannelClassifier::OnClassifyComplete(nsresult aErrorCode)
     }
 
     mChannel = nullptr;
-
     return NS_OK;
 }
 

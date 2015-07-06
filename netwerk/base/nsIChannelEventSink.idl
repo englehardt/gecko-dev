@@ -17,7 +17,7 @@ interface nsIAsyncVerifyRedirectCallback;
  *
  * These methods are called before onStartRequest.
  */
-[scriptable, uuid(0197720d-37ed-4e75-8956-d0d296e4d8a6)]
+[scriptable, uuid(74bb1676-0ad3-401a-a303-28c02229668b)]
 interface nsIChannelEventSink : nsISupports
 {
     /**
@@ -51,6 +51,12 @@ interface nsIChannelEventSink : nsISupports
      * may be considered as safe despite not being the-same-origin redirect.
      */
     const unsigned long REDIRECT_STS_UPGRADE = 1 << 3;
+
+    /**
+     * This is a special-cased redirect coming from a tracking protection
+     * sandbox.
+     */
+    const unsigned long REDIRECT_TRACKING_SANDBOX = 1 << 4;
 
     /**
      * Called when a redirect occurs. This may happen due to an HTTP 3xx status
