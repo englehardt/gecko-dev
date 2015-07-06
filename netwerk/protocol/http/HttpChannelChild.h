@@ -88,6 +88,8 @@ public:
   // nsIHttpChannelInternal
   NS_IMETHOD SetupFallbackChannel(const char *aFallbackKey) override;
   NS_IMETHOD ForceIntercepted(uint64_t aInterceptionID) override;
+  NS_IMETHOD StartRedirectChannelInSandbox() override { MOZ_CRASH(); return NS_OK; }
+
   // nsISupportsPriority
   NS_IMETHOD SetPriority(int32_t value) override;
   // nsIClassOfService
