@@ -7688,6 +7688,7 @@ nsHttpChannel::SetDoNotTrack()
                            NS_LITERAL_CSTRING("1"),
                            false);
   }
+}
 
 NS_IMETHODIMP nsHttpChannel::StartRedirectChannelInSandbox()
 {
@@ -7714,7 +7715,8 @@ NS_IMETHODIMP nsHttpChannel::StartRedirectChannelInSandbox()
     LOG(("nsHttpChannel::%s [this=%p] newChannel = %p\n", __FUNCTION__, this,
          newChannel.get()));
 
-    rv = SetupReplacementChannel(mURI, newChannel, true);
+    uint32_t redirectFlags = nsIChannelEventSink::REDIRECT_INTERNAL;
+    rv = SetupReplacementChannel(mURI, newChannel, true, redirectFlags);
     if (NS_FAILED(rv)) return rv;
 
     // Add LOAD_ANONYMOUS
