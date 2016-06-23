@@ -68,7 +68,7 @@ nsChannelClassifier::ShouldEnableTrackingProtection(nsIChannel *aChannel,
     TrackingProtectionMode mode;
     nsCOMPtr<nsILoadContext> loadContext;
     NS_QueryNotificationCallbacks(aChannel, loadContext);
-    if (!loadContext || !(loadContext->UseTrackingProtection())) {
+    if (loadContext && loadContext->UseTrackingProtection()) {
       mode = Block;
     } else if (Preferences::GetBool("privacy.adbox.enabled", false)) {
       mode = Sandbox;
@@ -706,19 +706,17 @@ nsChannelClassifier::OnClassifyComplete(nsresult aErrorCode)
             nsLoadFlags loadFlags;
             nsresult rv = mChannel->GetLoadFlags(&loadFlags);
             NS_ENSURE_SUCCESS(rv, rv);
+
+            // Return early if flags already set
             if (loadFlags & nsIRequest::LOAD_ANONYMOUS) {
               LOG(("nsChannelClassifier[%p]:Tracking load already sandboxed for %p ",
                    this, mChannel.get()));
-
-              mChannel->Resume();
-              mChannel = nullptr;
             } else {
               LOG(("nsChannelClassifier[%p]:OnClassifyComplete redirecting  %p as sandboxed ",
                    this, mChannel.get()));
 
               // Set the load anonymous load flag
               rv = mChannel->SetLoadFlags(loadFlags | nsIRequest::LOAD_ANONYMOUS);
-              mChannel->Resume();
 
               // TODO(ekr@rtfm.com): This isn't the idiom we do elsewhere in this
               // code to get docshell.
@@ -744,10 +742,7 @@ nsChannelClassifier::OnClassifyComplete(nsresult aErrorCode)
               //rv = hchannel->StartRedirectChannelInSandbox();
             }
           }
-        } else {
-          mChannel->Cancel(aErrorCode);
         }
-        return NS_OK;
       }
       LOG(("nsChannelClassifier[%p]: resuming channel %p from "
            "OnClassifyComplete", this, mChannel.get()));
@@ -755,7 +750,6 @@ nsChannelClassifier::OnClassifyComplete(nsresult aErrorCode)
     }
 
     mChannel = nullptr;
-
     return NS_OK;
 }
 
