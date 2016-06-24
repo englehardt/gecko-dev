@@ -716,17 +716,17 @@ nsChannelClassifier::OnClassifyComplete(nsresult aErrorCode)
                    this, mChannel.get()));
 
               // Set the load anonymous load flag
-              rv = mChannel->SetLoadFlags(loadFlags | nsIRequest::LOAD_ANONYMOUS);
+              // XXX(englehardt): We can't do this here. It's too late in the
+              // building of the channel
+              //rv = mChannel->SetLoadFlags(loadFlags | nsIRequest::LOAD_ANONYMOUS);
 
               // TODO(ekr@rtfm.com): This isn't the idiom we do elsewhere in this
               // code to get docshell.
               //nsILoadInfo* loadInfo;
               //rv = mChannel->GetLoadInfo(&loadInfo);
               //NS_ENSURE_SUCCESS(rv, rv);
-
               //nsINode* node = loadInfo->LoadingNode();
               //nsCOMPtr<nsIDocShell> docShell = node->OwnerDoc()->GetDocShell();
-
               //nsCOMPtr<nsIDocShellTreeItem> parent;
               //docShell->GetSameTypeParent(getter_AddRefs(parent));
               //if (parent.get()) {
@@ -734,12 +734,11 @@ nsChannelClassifier::OnClassifyComplete(nsresult aErrorCode)
               //} else {
               //  LOG(("EKR: PARENT IS NON-NULL"));
               //}
-              //nsCOMPtr<nsIHttpChannelInternal> hchannel = do_QueryInterface(mChannel, &rv);
-              //NS_ENSURE_SUCCESS(rv, rv);
 
-              // TODO(englehardt)Let's not redirect, let's instead set some
-              // sandbox flags.
-              //rv = hchannel->StartRedirectChannelInSandbox();
+              nsCOMPtr<nsIHttpChannelInternal> hchannel = do_QueryInterface(mChannel, &rv);
+              NS_ENSURE_SUCCESS(rv, rv);
+
+              rv = hchannel->StartRedirectChannelInSandbox();
             }
           }
         }
