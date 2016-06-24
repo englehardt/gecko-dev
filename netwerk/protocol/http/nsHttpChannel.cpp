@@ -6098,11 +6098,11 @@ nsHttpChannel::OnStartRequest(nsIRequest *request, nsISupports *ctxt)
     }
 
     // avoid crashing if mListener happens to be null...
-    if (!mListener) {
-        LOG(("EKR : mListener is null this=%p\n", this));
-        NS_NOTREACHED("mListener is null");
-        return NS_OK;
-    }
+    //if (!mListener) {
+    //    LOG(("EKR : mListener is null this=%p\n", this));
+    //    NS_NOTREACHED("mListener is null");
+    //    return NS_OK;
+    //}
 
     // before we start any content load, check for redirectTo being called
     // this code is executed mainly before we start load from the cache
@@ -7686,12 +7686,11 @@ nsHttpChannel::SetDoNotTrack()
 NS_IMETHODIMP nsHttpChannel::StartRedirectChannelInSandbox()
 {
     nsresult rv;
-
     LOG(("nsHttpChannel::%s [this=%p]\n", __FUNCTION__, this));
 
     nsCOMPtr<nsIIOService> ioService;
     rv = gHttpHandler->GetIOService(getter_AddRefs(ioService));
-    if (NS_FAILED(rv)) return rv;
+    NS_ENSURE_SUCCESS(rv, rv);
 
     nsCOMPtr<nsIChannel> newChannel;
     rv = NS_NewChannelInternal(getter_AddRefs(newChannel),
@@ -7701,6 +7700,19 @@ NS_IMETHODIMP nsHttpChannel::StartRedirectChannelInSandbox()
                                nullptr, // aCallbacks
                                nsIRequest::LOAD_NORMAL,
                                ioService);
+    NS_ENSURE_SUCCESS(rv, rv);
+
+    // Add LOAD_ANONYMOUS
+    nsLoadFlags lf;
+    rv = newChannel->GetLoadFlags(&lf);
+    NS_ENSURE_SUCCESS(rv, rv);
+    rv = newChannel->SetLoadFlags(lf | nsIRequest::LOAD_ANONYMOUS);
+    NS_ENSURE_SUCCESS(rv, rv);
+
+
+    uint32_t redirectFlags = nsIChannelEventSink::REDIRECT_INTERNAL;
+    rv = SetupReplacementChannel(mURI, newChannel, true, redirectFlags);
+    NS_ENSURE_SUCCESS(rv, rv);
 
     // Inform consumers about this fake redirect
     mRedirectChannel = newChannel;
@@ -7708,20 +7720,9 @@ NS_IMETHODIMP nsHttpChannel::StartRedirectChannelInSandbox()
     LOG(("nsHttpChannel::%s [this=%p] newChannel = %p\n", __FUNCTION__, this,
          newChannel.get()));
 
-    uint32_t redirectFlags = nsIChannelEventSink::REDIRECT_INTERNAL;
-    rv = SetupReplacementChannel(mURI, newChannel, true, redirectFlags);
-    if (NS_FAILED(rv)) return rv;
-
-    // Add LOAD_ANONYMOUS
-    nsLoadFlags lf;
-    rv = newChannel->GetLoadFlags(&lf);
-    NS_ENSURE_SUCCESS(rv, rv);
-
-    rv = newChannel->SetLoadFlags(lf | nsIRequest::LOAD_ANONYMOUS);
-    NS_ENSURE_SUCCESS(rv, rv);
     PushRedirectAsyncFunc(&nsHttpChannel::ContinueProcessRedirection);
-    rv = gHttpHandler->AsyncOnChannelRedirect(this, newChannel,
-                                              nsIChannelEventSink::REDIRECT_TEMPORARY);
+
+    rv = gHttpHandler->AsyncOnChannelRedirect(this, newChannel, redirectFlags);
 
     if (NS_SUCCEEDED(rv))
         rv = WaitForRedirectCallback();
