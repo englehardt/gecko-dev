@@ -7702,22 +7702,9 @@ NS_IMETHODIMP nsHttpChannel::StartRedirectChannelInSandbox()
                                ioService);
     NS_ENSURE_SUCCESS(rv, rv);
 
-    uint32_t redirectFlags = nsIChannelEventSink::REDIRECT_INTERNAL;
+    uint32_t redirectFlags = nsIChannelEventSink::REDIRECT_INTERNAL |
+        nsIChannelEventSink::REDIRECT_TRACKING_SANDBOX;
     rv = SetupReplacementChannel(mURI, newChannel, true, redirectFlags);
-    NS_ENSURE_SUCCESS(rv, rv);
-
-    // Copy loadflags set by SetupReplacementChannel
-    nsLoadFlags newLoadFlags;
-    rv = newChannel->GetLoadFlags(&newLoadFlags);
-    NS_ENSURE_SUCCESS(rv, rv);
-
-    // Add LOAD_ANONYMOUS
-    newLoadFlags |= nsIRequest::LOAD_ANONYMOUS;
-
-    // Remove LOAD_CLASSIFY_URI
-    newLoadFlags -= newLoadFlags & nsIChannel::LOAD_CLASSIFY_URI;
-
-    rv = newChannel->SetLoadFlags(newLoadFlags);
     NS_ENSURE_SUCCESS(rv, rv);
 
     // Inform consumers about this fake redirect

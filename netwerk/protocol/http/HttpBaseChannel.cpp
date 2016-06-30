@@ -2839,6 +2839,13 @@ HttpBaseChannel::SetupReplacementChannel(nsIURI       *newURI,
      this, newChannel, preserveMethod));
 
   uint32_t newLoadFlags = mLoadFlags | LOAD_REPLACE;
+
+  // Add tracking sandbox flags
+  if (redirectFlags & nsIChannelEventSink::REDIRECT_TRACKING_SANDBOX) {
+    newLoadFlags |= nsIRequest::LOAD_ANONYMOUS;
+    newLoadFlags &= ~nsIChannel::LOAD_CLASSIFY_URI;
+  }
+
   // if the original channel was using SSL and this channel is not using
   // SSL, then no need to inhibit persistent caching.  however, if the
   // original channel was not using SSL and has INHIBIT_PERSISTENT_CACHING
