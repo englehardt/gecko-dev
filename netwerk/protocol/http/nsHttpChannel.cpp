@@ -6098,11 +6098,11 @@ nsHttpChannel::OnStartRequest(nsIRequest *request, nsISupports *ctxt)
     }
 
     // avoid crashing if mListener happens to be null...
-    //if (!mListener) {
-    //    LOG(("EKR : mListener is null this=%p\n", this));
-    //    NS_NOTREACHED("mListener is null");
-    //    return NS_OK;
-    //}
+    if (!mListener) {
+        LOG(("EKR : mListener is null this=%p\n", this));
+        NS_NOTREACHED("mListener is null");
+        return NS_OK;
+    }
 
     // before we start any content load, check for redirectTo being called
     // this code is executed mainly before we start load from the cache
@@ -7702,16 +7702,22 @@ NS_IMETHODIMP nsHttpChannel::StartRedirectChannelInSandbox()
                                ioService);
     NS_ENSURE_SUCCESS(rv, rv);
 
-    // Add LOAD_ANONYMOUS
-    nsLoadFlags lf;
-    rv = newChannel->GetLoadFlags(&lf);
-    NS_ENSURE_SUCCESS(rv, rv);
-    rv = newChannel->SetLoadFlags(lf | nsIRequest::LOAD_ANONYMOUS);
-    NS_ENSURE_SUCCESS(rv, rv);
-
-
     uint32_t redirectFlags = nsIChannelEventSink::REDIRECT_INTERNAL;
     rv = SetupReplacementChannel(mURI, newChannel, true, redirectFlags);
+    NS_ENSURE_SUCCESS(rv, rv);
+
+    // Copy loadflags set by SetupReplacementChannel
+    nsLoadFlags newLoadFlags;
+    rv = newChannel->GetLoadFlags(&newLoadFlags);
+    NS_ENSURE_SUCCESS(rv, rv);
+
+    // Add LOAD_ANONYMOUS
+    newLoadFlags |= nsIRequest::LOAD_ANONYMOUS;
+
+    // Remove LOAD_CLASSIFY_URI
+    newLoadFlags -= newLoadFlags & nsIChannel::LOAD_CLASSIFY_URI;
+
+    rv = newChannel->SetLoadFlags(newLoadFlags);
     NS_ENSURE_SUCCESS(rv, rv);
 
     // Inform consumers about this fake redirect
