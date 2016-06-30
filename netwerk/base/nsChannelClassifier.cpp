@@ -69,9 +69,11 @@ nsChannelClassifier::ShouldEnableTrackingProtection(nsIChannel *aChannel,
     nsCOMPtr<nsILoadContext> loadContext;
     NS_QueryNotificationCallbacks(aChannel, loadContext);
     if (loadContext && loadContext->UseTrackingProtection()) {
-      mode = Block;
-    } else if (Preferences::GetBool("privacy.adbox.enabled", false)) {
-      mode = Sandbox;
+      if (Preferences::GetBool("privacy.adbox.enabled", false)) {
+        mode = Sandbox;
+      } else {
+        mode = Block;
+      }
     } else {
       *result = Allow;
       return NS_OK;
@@ -707,7 +709,7 @@ nsChannelClassifier::OnClassifyComplete(nsresult aErrorCode)
             nsresult rv = mChannel->GetLoadFlags(&loadFlags);
             NS_ENSURE_SUCCESS(rv, rv);
 
-            // Return early if flags already set
+            // No need to sandbox if redirect flag already set
             if (loadFlags & nsIRequest::LOAD_ANONYMOUS) {
               LOG(("nsChannelClassifier[%p]:Tracking load already sandboxed for %p ",
                    this, mChannel.get()));
