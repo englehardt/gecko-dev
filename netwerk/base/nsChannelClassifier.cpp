@@ -709,19 +709,13 @@ nsChannelClassifier::OnClassifyComplete(nsresult aErrorCode)
             nsresult rv = mChannel->GetLoadFlags(&loadFlags);
             NS_ENSURE_SUCCESS(rv, rv);
 
-            // No need to sandbox if redirect flag already set
-            if (loadFlags & nsIRequest::LOAD_ANONYMOUS) {
-              LOG(("nsChannelClassifier[%p]:Tracking load already sandboxed for %p ",
-                   this, mChannel.get()));
-            } else {
-              LOG(("nsChannelClassifier[%p]:OnClassifyComplete redirecting  %p as sandboxed ",
-                   this, mChannel.get()));
+            LOG(("nsChannelClassifier[%p]:OnClassifyComplete redirecting  %p as sandboxed ",
+                 this, mChannel.get()));
 
-              // Redirect the httpChannel
-              nsCOMPtr<nsIHttpChannelInternal> hchannel = do_QueryInterface(mChannel, &rv);
-              NS_ENSURE_SUCCESS(rv, rv);
-              rv = hchannel->StartRedirectChannelInSandbox();
-            }
+            // Redirect the httpChannel
+            nsCOMPtr<nsIHttpChannelInternal> hchannel = do_QueryInterface(mChannel, &rv);
+            NS_ENSURE_SUCCESS(rv, rv);
+            rv = hchannel->StartRedirectChannelInSandbox();
           }
         }
       }
