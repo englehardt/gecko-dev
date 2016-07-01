@@ -5367,7 +5367,6 @@ nsHttpChannel::AsyncOpen(nsIStreamListener *listener, nsISupports *context)
         mUserSetCookieHeader = cookieHeader;
     }
 
-    // TODO(ekr@rtfm.com): Why are cookies set here?
     AddCookiesToRequest();
 
     // After we notify any observers (on-opening-request, loadGroup, etc) we
@@ -6106,7 +6105,6 @@ nsHttpChannel::OnStartRequest(nsIRequest *request, nsISupports *ctxt)
 
     // avoid crashing if mListener happens to be null...
     if (!mListener) {
-        LOG(("EKR : mListener is null this=%p\n", this));
         NS_NOTREACHED("mListener is null");
         return NS_OK;
     }
