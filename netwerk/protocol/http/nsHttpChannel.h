@@ -307,6 +307,7 @@ private:
     void     HandleAsyncFallback();
     nsresult ContinueHandleAsyncFallback(nsresult);
     nsresult PromptTempRedirect();
+    nsresult ContinueRedirectChannelInSandbox(nsresult);
     virtual  nsresult SetupReplacementChannel(nsIURI *, nsIChannel *,
                                               bool preserveMethod,
                                               uint32_t redirectFlags) override;
