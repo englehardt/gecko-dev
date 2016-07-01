@@ -716,6 +716,8 @@ nsChannelClassifier::OnClassifyComplete(nsresult aErrorCode)
             nsCOMPtr<nsIHttpChannelInternal> hchannel = do_QueryInterface(mChannel, &rv);
             NS_ENSURE_SUCCESS(rv, rv);
             rv = hchannel->StartRedirectChannelInSandbox();
+            mChannel = nullptr;
+            return NS_OK;
           }
         }
       }
