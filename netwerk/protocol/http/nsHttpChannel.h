@@ -360,7 +360,7 @@ private:
     nsresult DoAuthRetry(nsAHttpConnection *);
 
     void     HandleAsyncRedirectChannelToHttps();
-    NS_IMETHOD StartRedirectChannelToHttps();
+    nsresult StartRedirectChannelToHttps();
     nsresult ContinueAsyncRedirectChannelToURI(nsresult rv);
     nsresult OpenRedirectChannel(nsresult rv);
 
