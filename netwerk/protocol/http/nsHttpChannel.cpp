@@ -7711,7 +7711,7 @@ NS_IMETHODIMP nsHttpChannel::StartRedirectChannelInSandbox()
     LOG(("nsHttpChannel::%s [this=%p] newChannel = %p\n", __FUNCTION__, this,
          newChannel.get()));
 
-    PushRedirectAsyncFunc(&nsHttpChannel::ContinueProcessRedirection);
+    PushRedirectAsyncFunc(&nsHttpChannel::ContinueRedirectChannelInSandbox);
 
     rv = gHttpHandler->AsyncOnChannelRedirect(this, newChannel, redirectFlags);
 
@@ -7720,10 +7720,19 @@ NS_IMETHODIMP nsHttpChannel::StartRedirectChannelInSandbox()
 
     if (NS_FAILED(rv)) {
         AutoRedirectVetoNotifier notifier(this);
-        PopRedirectAsyncFunc(&nsHttpChannel::ContinueProcessRedirection);
+        PopRedirectAsyncFunc(&nsHttpChannel::ContinueRedirectChannelInSandbox);
     }
 
     return rv;
+}
+
+nsresult
+nsHttpChannel::ContinueRedirectChannelInSandbox(nsresult result)
+{
+    // Cancel the origin channel before continuing with the redirect
+    // Tracking protection should fall back to blocking with redirects fail
+    Cancel(NS_BINDING_ABORTED);
+    return ContinueProcessRedirection(result);
 }
 
 } // namespace net
