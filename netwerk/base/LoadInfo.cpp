@@ -468,6 +468,13 @@ LoadInfo::GetLoadingSandboxed(bool* aLoadingSandboxed)
 }
 
 NS_IMETHODIMP
+LoadInfo::GetLoadTrackingSandboxed(bool* aTrackingSandboxed)
+{
+  *aTrackingSandboxed = (mSecurityFlags & nsILoadInfo::SEC_TRACKING_SANDBOXED);
+  return NS_OK;
+}
+
+NS_IMETHODIMP
 LoadInfo::GetAboutBlankInherits(bool* aResult)
 {
   *aResult =
