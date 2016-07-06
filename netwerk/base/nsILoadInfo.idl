@@ -29,7 +29,7 @@ typedef unsigned long nsSecurityFlags;
 /**
  * An nsILoadOwner represents per-load information about who started the load.
  */
-[scriptable, builtinclass, uuid(ddc65bf9-2f60-41ab-b22a-4f1ae9efcd36)]
+[scriptable, builtinclass, uuid(0bc91386-8825-4fa4-b8d6-0475add30219)]
 interface nsILoadInfo : nsISupports
 {
   /**
@@ -181,6 +181,16 @@ interface nsILoadInfo : nsISupports
    * dropped.
    */
   const unsigned long SEC_FORCE_INHERIT_PRINCIPAL_WAS_DROPPED = (1<<14);
+
+  /**
+   * Place the load in a tracking sandbox. This will apply a subset of iframe
+   * sandbox flags. We currently apply:
+   *
+   * - Null principal
+   *
+   * This flag can not be used together with SEC_FORCE_INHERIT_PRINCIPAL.
+   */
+  const unsigned long SEC_TRACKING_SANDBOXED = (1<<15);
 
   /**
    * The loadingPrincipal is the principal that is responsible for the load.
