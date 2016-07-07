@@ -312,6 +312,11 @@ interface nsILoadInfo : nsISupports
   [infallible] readonly attribute boolean loadingSandboxed;
 
   /**
+   * Returns true if SEC_TRACKING_SANDBOX is set.
+   */
+  [infallible] readonly attribute boolean loadTrackingSandboxed;
+
+  /**
    * If aboutBlankInherits is true, then about:blank should inherit
    * the principal.
    */
