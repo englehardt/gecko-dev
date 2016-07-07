@@ -2877,10 +2877,16 @@ HttpBaseChannel::SetupReplacementChannel(nsIURI       *newURI,
   }
 
   // make a copy of the loadinfo, append to the redirectchain
-  // and set it on the new channel
+  // and set it on the new channel. Add new security flags if necessary.
   if (mLoadInfo) {
+    nsSecurityFlags secFlags = mLoadInfo->GetSecurityFlags();
+    if (redirectFlags & nsIChannelEventSink::REDIRECT_TRACKING_SANDBOX) {
+      //TODO(englehardt): figure out how to handle SEC_FORCE_INHERIT_PRINCIPAL
+      //secFlags ^= nsILoadInfo::SEC_FORCE_INHERIT_PRINCIPAL;
+      secFlags |= nsILoadInfo::SEC_TRACKING_SANDBOXED;
+    }
     nsCOMPtr<nsILoadInfo> newLoadInfo =
-      static_cast<mozilla::LoadInfo*>(mLoadInfo.get())->Clone();
+      static_cast<mozilla::LoadInfo*>(mLoadInfo.get())->CloneWithNewSecFlags(secFlags);
     bool isInternalRedirect =
       (redirectFlags & (nsIChannelEventSink::REDIRECT_INTERNAL |
                         nsIChannelEventSink::REDIRECT_STS_UPGRADE));

@@ -2598,6 +2598,15 @@ nsDocument::StartDocumentLoad(const char* aCommand, nsIChannel* aChannel,
     WarnIfSandboxIneffective(docShell, mSandboxFlags, GetChannel());
   }
 
+  // If this document is being loaded in a tracking sandbox, add in the
+  // necessary sandbox flags. These flags will supersede the flags copied
+  // from the docShell (if any).
+  nsCOMPtr<nsILoadInfo> loadInfo = aChannel->GetLoadInfo();
+  if (loadInfo && loadInfo->GetLoadTrackingSandboxed()) {
+    mSandboxFlags |= SANDBOXED_ORIGIN |
+                     SANDBOXED_MODALS;
+  }
+
   // The CSP directive upgrade-insecure-requests not only applies to the
   // toplevel document, but also to nested documents. Let's propagate that
   // flag from the parent to the nested document.
