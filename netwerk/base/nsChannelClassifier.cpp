@@ -697,7 +697,34 @@ nsChannelClassifier::OnClassifyComplete(nsresult aErrorCode)
           TrackingProtectionMode tpmode;
           (void)ShouldEnableTrackingProtection(mChannel, &tpmode);
 
-          if (tpmode != Sandbox) {
+          // Certain contentPolicyTypes are always blocked
+          nsCOMPtr<nsILoadInfo> loadInfo;
+          nsresult rv = mChannel->GetLoadInfo(getter_AddRefs(loadInfo));
+          NS_ENSURE_SUCCESS(rv, rv);
+
+          nsContentPolicyType contentPolicyType;
+          rv = loadInfo->GetExternalContentPolicyType(&contentPolicyType);
+          NS_ENSURE_SUCCESS(rv, rv);
+
+          // We don't want to block content that loads in a tracking sandboxed
+          // iframe. The null principal will take care of any state changes
+          // from this content. We do still want to strip cookies from these
+          // requests, as the cookies are added only based on the origin of the
+          // request.
+          // TODO(englehardt): There must be a better way to do this
+          nsINode* loadingNode = loadInfo->LoadingNode();
+          nsCOMPtr<nsIChannel> ownerChannel = loadingNode->OwnerDoc()->GetChannel();
+
+          nsCOMPtr<nsILoadInfo> ownerLoadInfo;
+          rv = ownerChannel->GetLoadInfo(getter_AddRefs(ownerLoadInfo));
+          NS_ENSURE_SUCCESS(rv, rv);
+
+          if ((tpmode != Sandbox) || (
+              !(ownerLoadInfo && ownerLoadInfo->GetLoadTrackingSandboxed()) &&
+              !(contentPolicyType == nsIContentPolicy::TYPE_IMAGE ||
+              contentPolicyType == nsIContentPolicy::TYPE_MEDIA ||
+              contentPolicyType == nsIContentPolicy::TYPE_DOCUMENT ||
+              contentPolicyType == nsIContentPolicy::TYPE_SUBDOCUMENT))) {
             // Channel will be cancelled (page element blocked) due to tracking.
             // Do update the security state of the document and fire a security
             // change event.
