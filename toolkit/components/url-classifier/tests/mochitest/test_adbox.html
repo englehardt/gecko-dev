@@ -107,7 +107,6 @@ function doUpdate(update) {
               aWindow.close();
 
               SpecialPowers.setBoolPref("privacy.adbox.enabled", true);
-              SpecialPowers.setBoolPref("privacy.trackingprotection.enabled", true);
               testOnWindow(contentPage, false, function(aWindow) {
                   checkLoads(aWindow, true);
                   info("Positive test");
@@ -126,7 +125,7 @@ function doUpdate(update) {
 
 SpecialPowers.pushPrefEnv(
   {"set" : [["urlclassifier.trackingTable", "test-track-simple"],
-            ["privacy.trackingprotection.enabled", false],
+            ["privacy.trackingprotection.enabled", true],
             ["privacy.trackingprotection.pbmode.enabled", true],
             ["channelclassifier.allowlist_example", true]]},
   function() { doUpdate(testUpdate); });
