@@ -183,10 +183,12 @@ interface nsILoadInfo : nsISupports
   const unsigned long SEC_FORCE_INHERIT_PRINCIPAL_WAS_DROPPED = (1<<14);
 
   /**
-   * Place the load in a tracking sandbox. This will apply a subset of iframe
-   * sandbox flags. We currently apply:
-   *
-   * - Null principal
+   * Place the load in a tracking sandbox. This inherits to all loads which
+   * occur within a SUB_DOCUMENT with the flag set. Tracking sandboxing varies
+   * by contentPolicyType. For SUB_DOCUMENTs, this will apply a subset of iframe
+   * sandbox flags (currently null principal). For SCRIPT loads within a
+   * sandboxed SUB_DOCUMENT, the script will be permitted to load without
+   * additional sandboxing.
    *
    * This flag can not be used together with SEC_FORCE_INHERIT_PRINCIPAL.
    */

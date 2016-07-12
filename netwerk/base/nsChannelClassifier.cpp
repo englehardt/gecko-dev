@@ -711,16 +711,14 @@ nsChannelClassifier::OnClassifyComplete(nsresult aErrorCode)
           // from this content. We do still want to strip cookies from these
           // requests, as the cookies are added only based on the origin of the
           // request.
-          // TODO(englehardt): There must be a better way to do this
-          nsINode* loadingNode = loadInfo->LoadingNode();
-          nsCOMPtr<nsIChannel> ownerChannel = loadingNode->OwnerDoc()->GetChannel();
 
-          nsCOMPtr<nsILoadInfo> ownerLoadInfo;
-          rv = ownerChannel->GetLoadInfo(getter_AddRefs(ownerLoadInfo));
-          NS_ENSURE_SUCCESS(rv, rv);
+          // The SEC_TRACKING_SANDBOXED flag inherits to all loads within a
+          // SUB_DOCUMENT. If we see the SEC_TRACKING_SANDBOXED flag already
+          // set (prior to classification) we know this load is within a sandbox
+          // already.
 
           if ((tpmode != Sandbox) || (
-              !(ownerLoadInfo && ownerLoadInfo->GetLoadTrackingSandboxed()) &&
+              !loadInfo->GetLoadTrackingSandboxed() &&
               !(contentPolicyType == nsIContentPolicy::TYPE_IMAGE ||
               contentPolicyType == nsIContentPolicy::TYPE_MEDIA ||
               contentPolicyType == nsIContentPolicy::TYPE_DOCUMENT ||

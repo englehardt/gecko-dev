@@ -134,12 +134,19 @@ LoadInfo::LoadInfo(nsIPrincipal* aLoadingPrincipal,
       (nsContentUtils::IsPreloadType(mInternalContentPolicyType) &&
        aLoadingContext->OwnerDoc()->GetUpgradeInsecureRequests(true));
 
-    // if owner doc has content signature, we enforce SRI
     nsCOMPtr<nsIChannel> channel = aLoadingContext->OwnerDoc()->GetChannel();
     if (channel) {
       nsCOMPtr<nsILoadInfo> loadInfo = channel->GetLoadInfo();
       if (loadInfo) {
+        // if owner doc has content signature, we enforce SRI
         loadInfo->GetVerifySignedContent(&mEnforceSRI);
+
+        // if owner doc has tracking sandbox flags, inherit them
+        // TODO(englehardt) does this have any unintended side effects? Are there
+        // cases where we will inherit the tracking flag when we don't want to?
+        if (loadInfo->GetLoadTrackingSandboxed()) {
+          mSecurityFlags |= nsILoadInfo::SEC_TRACKING_SANDBOXED;
+        }
       }
     }
   }
